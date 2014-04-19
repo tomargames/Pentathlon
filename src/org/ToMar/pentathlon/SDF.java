@@ -14,7 +14,10 @@ public class SDF extends Canvas implements MouseListener
 {
 	private static final long serialVersionUID = -2609361118653956384L;
 	public static final int TOPMARGIN = 35;
-	private static final Color colors[] = {tmColors.DARKRED, tmColors.DARKGREEN, tmColors.PURPLE};
+	private static final Color colors[][] = {{tmColors.RED, tmColors.OLIVE, tmColors.DARKCYAN},
+											 {tmColors.DARKRED, tmColors.DARKGREEN, tmColors.PURPLE},
+											 {tmColors.RED, tmColors.GREEN, tmColors.BLUE}};
+	private int colorIndex = 0;
 	private static final Color selectColor = tmColors.LIGHTGRAY;
 	private static final Color normalColor = tmColors.CREAM;
 	private final static int TOTALCARDS = 81;
@@ -32,6 +35,7 @@ public class SDF extends Canvas implements MouseListener
     private int cardsInLayout;
 	private String message = "";
     private tmButton helpButton;
+    private tmButton colorButton;
     private Pentathlon pentathlon;
 	private int GAMEINDEX;
 
@@ -54,6 +58,13 @@ public class SDF extends Canvas implements MouseListener
         }
 		helpButton = pentathlon.getHelpButton(GAMEINDEX);
 		helpButton.setX(1);
+        colorButton = new tmButton(55, 5, 45, "COLOR");
+        colorButton.setHeight(20);
+        colorButton.setFontSize(10);
+        colorButton.setFgColor(Pentathlon.bgColors[GAMEINDEX]);
+        colorButton.setBgColor(tmColors.DARKBLUE);
+        colorButton.setXLabel(5);
+        colorButton.setYLabel(14);
 		cards = new Card[TOTALCARDS];
 		layout = new ArrayList<>();
 	}
@@ -84,21 +95,19 @@ public class SDF extends Canvas implements MouseListener
 		}
 		return sb.toString();
 	}
-//20131104102653011SRT3SPT2ERT1SPT3DPC2DRS2SRT3ERS1ERC2SRC3SGS3EPC1SGC1SPS1DPT2SPC3DRC2EPS1ERS3SPC2ERS1SPC3DGC2EPC2SPS3DGT1SRS1ERT1EPT1EPS2SGC1EGC3SRS1DGS2DGS3SRC1DGC2DPS3SGC1DRT3EGT2DPC2SRS2SGT3EPS3SRT1SRC2EPT2SPT1EGS3DGS1EPC2DRT2EGS1DGT3ERC2DGC1DPC3SPS1EGT1DRC2EGT3DRS3DPS3EGS2DGT3EGC3ERT1SGT2ERC2DPT1SGS3SGT2SGS3EPT3DPT1DPS2EGC3DRT1DRS2DRC05061SRT3SPT2ERT1SPT3DPC2DRSDEED  ?E?D
+//1SRT3SPT2ERT1SPT3DPC2DRS2SRT3ERS1ERC2SRC3SGS3EPC1SGC1SPS1DPT2SPC3DRC2EPS1ERS3SPC2ERS1SPC3DGC2EPC2SPS3DGT1SRS1ERT1EPT1EPS2SGC1EGC3SRS1DGS2DGS3SRC1DGC2DPS3SGC1DRT3EGT2DPC2SRS2SGT3EPS3SRT1SRC2EPT2SPT1EGS3DGS1EPC2DRT2EGS1DGT3ERC2DGC1DPC3SPS1EGT1DRC2EGT3DRS3DPS3EGS2DGT3EGC3ERT1SGT2ERC2DPT1SGS3SGT2SGS3EPT3DPT1DPS2EGC3DRT1DRS2DRC05061SRT3SPT2ERT1SPT3DPC2DRS
 	public void restore(String s)
 	{
 		pentathlon.log.debug("SDF.restore: " + s);
 		// first, replace all 81 cards in deck with cards from saveString
-		int pointer = 16;
 		for (int i = 0; i < TOTALCARDS; i++)
 		{
-			cards[i] = new Card(s.substring(pointer, pointer + 4));
-			pointer += 4;
+			cards[i] = new Card(s.substring(4 * i, 4 * (i+1)));
 		}
-		cardPointer = Integer.parseInt(s.substring(340, 342));
-		int cardsInLayout = Integer.parseInt(s.substring(342, 344));
+		cardPointer = Integer.parseInt(s.substring(324, 326));
+		int cardsInLayout = Integer.parseInt(s.substring(326, 328));
 		layout = new ArrayList<>();
-		pointer = 344;
+		int pointer = 328;
 		for (int i = 0; i < cardsInLayout; i++)
 		{
 			layout.add(new Card(s.substring(pointer, pointer + 4)));
@@ -148,7 +157,7 @@ public class SDF extends Canvas implements MouseListener
             else
             {
                 pentathlon.setActive(GAMEINDEX, false);
-                message = "Find " + cardsInMaze.size() + " in the Level " + pentathlon.getLevel() + " maze.";
+                message = "Find " + cardsInMaze.size() + " cards.";
             }
             repaint();
         }
@@ -161,15 +170,16 @@ public class SDF extends Canvas implements MouseListener
     {
         og.setColor(tmColors.BLACK);
         og.setFont(tmFonts.PLAIN24);
-        og.drawString(Pentathlon.titles[GAMEINDEX], 48, Pentathlon.yTITLE);
+        og.drawString(Pentathlon.titles[GAMEINDEX], 102, Pentathlon.yTITLE);
         og.setFont(tmFonts.PLAIN16);
-        og.drawString(message, 220, Pentathlon.yTITLE);
+        og.drawString(message, 278, Pentathlon.yTITLE);
         // cards will be visible if they are active (have been found in maze)
         for (int i = 0; i < layout.size(); i++)
         {
 			layout.get(i).draw(this.getGraphics());
         }
         helpButton.draw(this.getGraphics());
+        colorButton.draw(this.getGraphics());
 	}
     public void update(Graphics g)
 	{
@@ -348,6 +358,14 @@ public class SDF extends Canvas implements MouseListener
         {
             pentathlon.getHelp(GAMEINDEX);
         }
+		else if (colorButton.clicked(e.getX(), e.getY()))
+		{
+			colorIndex += 1;
+			if (colorIndex == colors.length)
+			{
+				colorIndex = 0;
+			}
+		}
         repaint();
     }
     public void foundPiece(int index)
@@ -385,7 +403,7 @@ public class SDF extends Canvas implements MouseListener
         }
 		public Card(String s)
 		{
-			pentathlon.log.debug("SDF.Card.constructor: " + s);
+//			pentathlon.log.debug("SDF.Card.constructor: " + s);
 			this.number = "123".indexOf(s.substring(0,1));
 			this.shading = "ESD".indexOf(s.substring(1,2));
 			this.color = "RGP".indexOf(s.substring(2,3));
@@ -446,7 +464,7 @@ public class SDF extends Canvas implements MouseListener
                 g.fillPolygon(slots[position]);
                 g.setColor(Color.black);
                 g.drawPolygon(slots[position]);
-                g.setColor(colors[color]);
+                g.setColor(colors[colorIndex][color]);
                 int x = slots[position].getBounds().x;
                 int y = slots[position].getBounds().y;
                 int marg = 5;

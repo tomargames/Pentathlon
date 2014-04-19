@@ -5,13 +5,6 @@ import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Image;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.Writer;
 import java.net.URL;
 import java.util.ArrayList;
 import javax.swing.ImageIcon;
@@ -33,7 +26,7 @@ import org.ToMar.Utils.tmLog;
 public class Pentathlon implements Runnable
 {
     private Thread thread;
-	public static final String COMPILEDATE = "12/11/13";
+	public static final String COMPILEDATE = "04/15/14";
     public static final int NUMBEROFGAMES = 5;          //change to 5
     public static final int MAXLEVEL = 27;
     public static final int MAZE = 0;
@@ -44,7 +37,11 @@ public class Pentathlon implements Runnable
     public static final int[] widths = {750, 300, 400, 450, 400};
     public static final int height = 300;
 	public static final int yTITLE = 25;
-    public static final Color[] bgColors = {tmColors.PALEYELLOW, tmColors.PALEPEACH, tmColors.PALECHARTREUSE, tmColors.PALECYAN, tmColors.LIGHTOLIVE};
+	public static final int NEWGAME = 0;
+	public static final int GAMESAVED = 1;
+	public static final int GAMEOVER = 2;
+	private int gameStage = 0;
+    public static final Color[] bgColors = {tmColors.PALEYELLOW, tmColors.PALEPEACH, tmColors.PALECHARTREUSE, tmColors.PALECYAN, tmColors.PALEORCHID};
     public static final String[] helps = {"MAZE.html", "U24.html", "HEX.html", "AA.html", "SDF.html"};
     public static final String[] titles = {"Maze", "Twenty-Four", "AlphabetSoup", "AnchorsAway", "SameDifference"};
 	public static final String NODATA = "No data available";
@@ -64,22 +61,19 @@ public class Pentathlon implements Runnable
     private JPanel container = new JPanel();
     private JPanel panel1 = new JPanel();
     private JPanel panel2 = new JPanel();
-    private boolean gameOver;
 	private String gameName;
-	private String historyFile = "tmPentathlonGames.txt";
-	private String saveFile = "tmPentathlonSave.txt";
+	private String historyFile = "gameHistory.txt";
+	private String saveFile = "gameInProgress.txt";
 	private ArrayList<String> gameLines;
     JScrollPane jsp;
 
+	@SuppressWarnings("unchecked")
     public void setUp(int numRows, int numCols, int size, int scale)
     {
 		log.debug("Pentathlon.setUp");
 		piecesToFind = new ArrayList[NUMBEROFGAMES];
-    	gameLines = createHistoryData();
-		setHistoryList(gameLines, gameLines.size(), 200);
         frame = new JFrame("ToMar Pentathlon");
 		frame.setIconImage(createImageIcon("PNT.PNG","ToMarPentathlon"));
-		String saveString = getSavedGame();
         for (int i = 0; i < NUMBEROFGAMES; i++)
         {
             helpBoxes[i] = new HelpBox(i);
@@ -89,7 +83,7 @@ public class Pentathlon implements Runnable
         games[SDF] = new SDF(this, SDF);
         games[HEX] = new HEX(this, HEX);
         games[AA] = new AA(this, AA);
-        gameOver = false;
+        gameStage = NEWGAME;
         container.setBackground(tmColors.BLACK);
         panel1.setBackground(tmColors.DARKGRAY);
         panel2.setBackground(tmColors.DARKGRAY);
@@ -108,13 +102,41 @@ public class Pentathlon implements Runnable
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         thread = new Thread(this);
         thread.start();
-		if (saveString.isEmpty())
+		ArrayList<String> saveLines = Functions.textFileToArrayList(saveFile);
+		log.display("Save file has " + saveLines.size() + " lines");
+		if (saveLines.isEmpty())
 		{
 			newGame();
 		}
 		else
 		{
-			setSavedData(saveString);
+			// restore saved game
+			gameName = saveLines.get(0).substring(0, 14);
+			level = Integer.parseInt(saveLines.get(0).substring(14, 16));
+			try
+			{
+				log.debug("Restoring SDF with " + saveLines.get(1));
+				(games[SDF].getClass().getMethod("restore", new Class<?>[]{String.class})).invoke(games[SDF], saveLines.get(1));
+				resetCounters(SDF);
+				log.debug("Restoring AA with " + saveLines.get(3));
+				(games[AA].getClass().getMethod("restore", new Class<?>[]{String.class})).invoke(games[AA], saveLines.get(3));
+				resetCounters(AA);
+				log.debug("Restoring U24 with " + saveLines.get(2));
+				(games[U24].getClass().getMethod("restore", new Class<?>[]{String.class})).invoke(games[U24], saveLines.get(2));
+				resetCounters(U24);
+				int[] gamesToReset = {HEX, MAZE};
+				for (int g : gamesToReset)
+				{
+					(games[g].getClass().getMethod("reInit", (Class<?>[]) null)).invoke(games[g]);
+					resetCounters(g);
+				}
+			}
+			catch (Exception e)
+			{
+				log.error("Error retrieving saved game: " + e);
+				newGame();
+			}
+	    	gameLines = createHistoryData();
 		}
     }
 	private void resetCounters(int gameIndex)
@@ -125,61 +147,13 @@ public class Pentathlon implements Runnable
 		this.setHelped(gameIndex, false);
 		this.setJewels(gameIndex, "");
 	}
-	public void setSavedData(String s)
-	{
-		log.debug("Pentathlon.setSavedData: " + s);
-		gameName = s.substring(0, 14);
-		level = Integer.parseInt(s.substring(14, 16));
-        try
-        {
-			(games[SDF].getClass().getMethod("restore", new Class<?>[]{String.class})).invoke(games[SDF], s);
-			if (!gameOver)
-			{
-				resetCounters(SDF);
-				(games[AA].getClass().getMethod("restore", new Class<?>[]{String.class})).invoke(games[AA], s);
-				resetCounters(AA);
-				int marker = s.indexOf("*");
-				if (marker > -1)
-				{
-					String u24s = s.substring(marker + 1, marker + 9);
-					(games[U24].getClass().getMethod("restore", new Class<?>[]{String.class})).invoke(games[U24], u24s);
-				}
-				else
-				{
-					(games[U24].getClass().getMethod("reInit", (Class<?>[]) null)).invoke(games[U24]);
-				}
-				resetCounters(U24);
-				int[] gamesToReset = {HEX, MAZE};
-				for (int g : gamesToReset)
-				{
-					(games[g].getClass().getMethod("reInit", (Class<?>[]) null)).invoke(games[g]);
-					resetCounters(g);
-				}
-				String message = saveHistory();
-				if (!message.isEmpty())
-				{
-	                (games[MAZE].getClass().getMethod("setMessage", new Class<?>[]{String.class})).invoke(games[MAZE], "Error saving files.");
-				}
-			}
-		}
-        catch(Exception e)
-		{
-			log.error("pentathlon.SetSavedData: " + e);
-		}
-	}
 	public void newGame()
 	{
 		log.debug("Pentathlon.newGame");
 		gameName = Functions.getDateTimeStamp();
-		if (gameOver)
-		{
-			log.debug("Starting after beating the old game");
-			gameOver = false;
-		}
-		else
-		{
-			saveHistory();
-		}
+    	gameLines = createHistoryData();
+		setHistoryList(gameLines, gameLines.size(), 200);
+		gameStage = NEWGAME;
 		((SDF) games[SDF]).newGame();
         level = 0;						// back door -- set to ((level you want) - 1)
         newLevel();
@@ -193,7 +167,7 @@ public class Pentathlon implements Runnable
             try
             {
                 (games[gameIndex].getClass().getMethod("reInit", (Class<?>[]) null)).invoke(games[gameIndex]);
-                if (gameOver)
+                if (gameStage == GAMEOVER)
                 {
 					log.debug("Pentathlon.newLevel: game is over.");
                     break;
@@ -208,7 +182,7 @@ public class Pentathlon implements Runnable
                 log.error("pentathlon.newLevel.gameIndex = " + gameIndex + " : " + e);
             }
         }
-		if (!gameOver)
+		if (gameStage < GAMEOVER && level > 1)
 		{
 			saveHistory();
 		}
@@ -237,25 +211,6 @@ public class Pentathlon implements Runnable
         }
         return false;
     }
-	public String getSavedGame()
-	{
-		log.debug("Pentathlon.getSavedGame");
-		String s = "";
-        try
-        {
-			BufferedReader br = new BufferedReader(new FileReader(new File(saveFile)));
-			s = br.readLine();
-		}
-        catch   (FileNotFoundException fe)
-        {
-            log.display("No saved game, starting new game: " + fe);
-	    }
-        catch   (Exception e)
-        {
-            log.error("Exception reading Pentathlon saved game file: " + e);
-        }
-		return s;
-	}
 	public tmButton getHelpButton(int gameIndex)
 	{
         tmButton helpButton = new tmButton(5, 5, 45, "HELP");
@@ -277,11 +232,11 @@ public class Pentathlon implements Runnable
             if (allPiecesFound(gameIndex))
             {
                 active[gameIndex] = true;
-                (games[gameIndex].getClass().getMethod("setMessage", new Class<?>[]{String.class})).invoke(games[gameIndex], "All pieces found! Solve it!");
+                (games[gameIndex].getClass().getMethod("setMessage", new Class<?>[]{String.class})).invoke(games[gameIndex], "Solve it!");
             }
             else
             {
-                (games[gameIndex].getClass().getMethod("setMessage", new Class<?>[]{String.class})).invoke(games[gameIndex], "" + (piecesToFind[gameIndex].size() - piecesFound[gameIndex]) + " more in Level " + level + " maze.");
+                (games[gameIndex].getClass().getMethod("setMessage", new Class<?>[]{String.class})).invoke(games[gameIndex], "" + (piecesToFind[gameIndex].size() - piecesFound[gameIndex]) + " more.");
             }
         }
         catch(Exception e)
@@ -296,66 +251,50 @@ public class Pentathlon implements Runnable
 			log.debug(tag + " gameLine" + i + ": " + gameLines.get(i));
 		}
 	}
-*/	private String saveHistory()
+*/	private void saveHistory()
 	{
+		// at the beginning of each level after 1, write game history and save current game
+		// if you're about to start a new game, having won the old one, just write game history
 		log.debug("Pentathlon.saveHistory: current gameName is " + gameName);
-		StringBuilder sb = new StringBuilder("");
+		ArrayList<String> al = new ArrayList<>();
 		// write(or overwrite) the entry for this game to reflect new level
-		try
+		// each line will be gameName (14) + level (2) + currentDate (8) + finishedIndicator (1)
+		// first, write line for current game
+		al.add(gameName + Functions.formatNumber(level, 2) + Functions.getDateTimeStamp().substring(0,8) + "N");
+		if (!(gameLines.get(0).equalsIgnoreCase(NODATA)))
 		{
-	        File file = new File(historyFile);
-			try (Writer output = new BufferedWriter(new FileWriter(file)))
+			for (int i = 0; i < gameLines.size(); i++)
 			{
-				output.write(gameName + Functions.formatNumber(level, 2));
-				if (!(gameLines.get(0).equalsIgnoreCase(NODATA)))
+				String storedName = gameLines.get(i).substring(0,14);
+				if (!(storedName.equalsIgnoreCase(gameName)))
 				{
-					for (int i = 0; i < gameLines.size(); i++)
-					{
-						String storedName = gameLines.get(i).substring(0,14);
-						if (!(storedName.equalsIgnoreCase(gameName)))
-						{
-							log.debug("Pentathlon.saveHistory: writing line " + gameLines.get(i));
-							output.write(gameLines.get(i));
-						}
-						else
-						{
-							gameLines.set(i, gameName + Functions.formatNumber(level, 2));
-						}
-					}
+					log.debug("Pentathlon.saveHistory: writing line " + gameLines.get(i));
+					al.add(gameLines.get(i));
 				}
 			}
 	    }
-		catch(Exception e)
-		{
-			log.error("Could not create file " + historyFile + ": " + e);
-			sb.append("Access to " + historyFile + " is denied. ");
-		}
+		Functions.arrayListToTextFile(historyFile, al);
 		// save game data for restore
-		try
-		{
-	        File file = new File(saveFile);
-		    Writer output = new BufferedWriter(new FileWriter(file));
-			output.write(gameName + Functions.formatNumber(level, 2));
-			output.write(((SDF) games[SDF]).getSaveString());
-			output.write(((U24) games[U24]).getSaveString());
-			output.write(((AA) games[AA]).getSaveString());
-	        output.close();
-	    }
-		catch(Exception e)
-		{
-			log.error("Could not create file " + saveFile + ": " + e);
-			sb.append("Access to " + saveFile + " is denied. ");
-		}
-		return sb.toString();
+		al = new ArrayList<>();
+		al.add(gameName + Functions.formatNumber(level, 2));
+		al.add(((SDF) games[SDF]).getSaveString());
+		al.add(((U24) games[U24]).getSaveString());
+		al.add(((AA) games[AA]).getSaveString());
+		Functions.arrayListToTextFile(saveFile, al);
+		gameStage = GAMESAVED;
 	}
     public boolean isGameOver()
     {
-        return gameOver;
+        return (gameStage == GAMEOVER) ? true : false;
     }
+	public int getGameStage()
+	{
+		return gameStage;
+	}
     public void setGameOver()
     {
 		log.debug("Pentathlon.setGameOver");
-        gameOver = true;
+        gameStage = GAMEOVER;
         try
         {
             for (int i = 0; i < NUMBEROFGAMES; i++)
@@ -369,6 +308,22 @@ public class Pentathlon implements Runnable
         {
             log.error("pentathlon.endOfGame: " + ef);
         }
+		log.debug("Game is over, looking for line to mark as finished. Game name is " + gameName);
+		for (int i = 0; i < gameLines.size(); i++)
+		{
+			log.debug("Looking at " + gameLines.get(i).substring(0,14));
+			if (gameName.equalsIgnoreCase(gameLines.get(i).substring(0, 14)))
+			{
+				log.debug("Found the line: " + gameLines.get(i));
+				String s = gameLines.get(i).substring(0,24) + "Y";
+				gameLines.set(i, s);
+				log.debug("After fixing: " + gameLines.get(i));
+				Functions.arrayListToTextFile(historyFile, gameLines);
+				break;
+			}
+		}
+		// wipe out gameInProgress file
+		Functions.arrayListToTextFile(saveFile, new ArrayList<String>());
     }
     public int getLevel()
     {
@@ -443,17 +398,16 @@ public class Pentathlon implements Runnable
 	private ArrayList<String> createHistoryData()
 	{
 		// read in file of game data, and set historyFile for this one
+		// each line will be gameName (14) + level (2) + currentDate (8) + finishedIndicator (1)
 		log.debug("Pentathlon.createHistoryData");
-		ArrayList<String> lines = new ArrayList<>();
-        try
-        {
-			BufferedReader br = new BufferedReader(new FileReader(new File(historyFile)));
-			String s = br.readLine();
-			while (s.length() > 0)
-			{
-				lines.add(s.substring(0, 16));
-				s = s.substring(16);
-			}
+		ArrayList<String> lines = Functions.textFileToArrayList(historyFile);
+		// sort lines
+		if (lines.isEmpty())
+		{
+			lines.add(NODATA);
+		}
+		else
+		{
 			boolean flips = true;
 			while (flips == true)
 			{
@@ -471,16 +425,8 @@ public class Pentathlon implements Runnable
 				}
 			}
 		}
-        catch   (FileNotFoundException fe)
-        {
-            log.display("Creating new game file: " + fe);
-			lines.add(NODATA);
-        }
-        catch   (Exception e)
-        {
-            log.error("Exception reading Pentathlon game history file: " + e);
-        }
-		return lines;
+		setHistoryList(lines, lines.size(), 200);
+        return lines;
 	}
 	public boolean[] isActive()
     {
@@ -528,6 +474,7 @@ public class Pentathlon implements Runnable
     }
 	private class HelpBox extends JDialog
     {
+		private static final long serialVersionUID = 1L;
         int gameIndex;
 		JScrollPane jsp;
 		JEditorPane jEditorPane;
@@ -558,10 +505,11 @@ public class Pentathlon implements Runnable
 			sb.append(w.get(i) + "\n");
 		}
 		wordList = new WordList(sb.toString(), rows, cols);
-		wordList.setBounds(500, 20, 100, 400);
+		wordList.setBounds(600, 20, 100, 400);
 	}
 	private class WordList extends JDialog
     {
+		private static final long serialVersionUID = 1L;
 		JScrollPane jsp;
 		JTextArea jTextArea;
 
@@ -592,14 +540,31 @@ public class Pentathlon implements Runnable
 		{
 			for (int i = 0; i < w.size(); i++)
 			{
-//				log(w.get(i));
-				sb.append(w.get(i).substring(4, 6) + "-" + w.get(i).substring(6, 8) + "-" + w.get(i).substring(0, 4) + "    Level " + w.get(i).substring(14) + "\n");
+//				each line will be gameName (14) + level (2) + currentDate (8) + finishedIndicator (1)
+				sb.append("Started: " +
+						w.get(i).substring(4, 6) + "-" +
+						w.get(i).substring(6, 8) + "-" +
+						w.get(i).substring(0, 4) + "   Played: " +
+						w.get(i).substring(20, 22) + "-" +
+						w.get(i).substring(22, 24) + "-" +
+						w.get(i).substring(16, 20) + "   Level: " +
+						w.get(i).substring(14, 16));
+				if ("Y".equalsIgnoreCase(w.get(i).substring(24)))
+				{
+					sb.append(" WINNER!!!");
+				}
+				else if (gameName.equalsIgnoreCase(w.get(i).substring(0, 14)))
+				{
+					sb.append(" current game");
+				}
+				sb.append("\n");
 			}
 		}
 		historyList = new HistoryList(sb.toString(), rows, cols);
 	}
 	private class HistoryList extends JDialog
     {
+		private static final long serialVersionUID = 1L;
 		JScrollPane jsp;
 		JTextArea jTextArea;
 
@@ -613,7 +578,7 @@ public class Pentathlon implements Runnable
             }
             catch   (Exception e)
             {
-                log.error("Exception in pentathlon.WordList: " + e);
+                log.error("Exception in pentathlon.HistoryList: " + e);
             }
 			jsp = new JScrollPane(jTextArea);
             this.getContentPane().add(jsp);

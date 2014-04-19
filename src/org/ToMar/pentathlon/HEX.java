@@ -80,7 +80,7 @@ public class HEX extends Canvas implements MouseListener
         }
         pentathlon.setPiecesToFind(GAMEINDEX, al);
         pentathlon.setActive(GAMEINDEX, false);
-        message = "Find the " + al.size() + " letters in the Level " + pentathlon.getLevel() + " maze.";
+        message = "Find " + al.size() + " letters.";
         repaint();
         stage = READY;
         clickedIndex = -1;

@@ -43,6 +43,7 @@ public class AA extends Canvas implements MouseListener
 	WordList w;
     private tmButton helpButton;
 	private tmButton wordButton;
+	private tmButton hintButton;
 	private int GAMEINDEX;
 
     // Classes
@@ -68,7 +69,6 @@ public class AA extends Canvas implements MouseListener
 		for (int i = 4; i < 7; i++)
 		{
             wordList.addAll(w.getWordListByLength(i, true));
-//			pentathlon.log("" + wordList.size());
 		}
 		yCOORDINATES = new int[TOTALROWS + POOLROWS];
 		xCOORDINATES = new int[SLOTSPERROW];
@@ -88,15 +88,21 @@ public class AA extends Canvas implements MouseListener
         wordButton.setFgColor(Pentathlon.bgColors[GAMEINDEX]);
         wordButton.setBgColor(tmColors.DARKGREEN);
         wordButton.setXLabel(5);
-        wordButton.setYLabel(15);
+        wordButton.setYLabel(14);
+        hintButton = new tmButton(Pentathlon.widths[GAMEINDEX] - 80, 5, 27, "HINT");
+        hintButton.setHeight(20);
+        hintButton.setFontSize(10);
+        hintButton.setFgColor(Pentathlon.bgColors[GAMEINDEX]);
+        hintButton.setBgColor(tmColors.DARKBLUE);
+        hintButton.setXLabel(3);
+        hintButton.setYLabel(14);
 	}
 	public void restore(String s)
 	{
 		try
 		{
-		pentathlon.log.debug("AA.restore: " + s);
+		pentathlon.log.debug("AA.restore: " + s + " for level " + pentathlon.getLevel());
 		// pentathlon will call this instead of reInit for first level of game if there's input
-		// data will be at end of string, 6 * 2 * level characters
 		String[] levelWords = new String[pentathlon.getLevel()];
 		String[] levelPatterns = new String[pentathlon.getLevel()];
 		String input = s.substring(s.length() - (pentathlon.getLevel() * 12));
@@ -184,7 +190,7 @@ public class AA extends Canvas implements MouseListener
 		}
         pentathlon.setPiecesToFind(GAMEINDEX, lettersForMaze);
         pentathlon.setActive(GAMEINDEX, false);
-        message = "Find " + lettersForMaze.size() + " in the Level " + pentathlon.getLevel() + " maze.";
+        message = "Find " + lettersForMaze.size() + " letters.";
 		selectedSlot = null;
 		repaint();
 	}
@@ -198,16 +204,6 @@ public class AA extends Canvas implements MouseListener
 		}
 		return sb.toString();
 	}
-/*	private void showElements()
-	{
-		for (int targetWord = 0; targetWord < pentathlon.getLevel(); targetWord++)
-		{	// look at each element to see if it's a slot
-			for (int targetWordLetter = 0; targetWordLetter < words[targetWord].getElements().length; targetWordLetter++)
-			{
-				pentathlon.log("" + targetWord + targetWordLetter + " = " + words[targetWord].getElements()[targetWordLetter].getClass().getName());
-			}
-		}
-	} */
     public void setMessage(String message)
     {
         this.message = message;
@@ -215,116 +211,6 @@ public class AA extends Canvas implements MouseListener
     }
 	public void mouseClicked(MouseEvent e)
 	{
-  		if (pentathlon.isActive()[GAMEINDEX] && !pentathlon.isSolved()[GAMEINDEX])
-        {
-			message = "Words: " + wordsFormed;
-			// this is looking at each slot in the letter pool
-			// if you click on a slot in the pool
-			//     if the slot is empty
-			//        if a slot has already been selected
-			//			move its letter from that slot to this slot
-			//		  otherwise, no action
-			//     if there's a letter in the slot
-			//		  if this letter was already in selected state, unselect it
-			//        else if another slot has already been selected
-			//			de-select that one, and select this one
-			for (int slotIndex = 0; slotIndex < letterPool.size(); slotIndex++)
-			{
-				Slot s = letterPool.get(slotIndex);
-				pentathlon.log.debug("Looking at pool slot " + slotIndex + ", current status is " + s.getStatus());
-				if (s.clicked(e.getX(), e.getY()))				// if slot was clicked
-				{
-					if (s.getLetter() != null)					// if there's a letter in the slot
-					{
-						pentathlon.log.debug("found");
-						// if this letter was already selected, and you click again, deselect it
-						if (s.getStatus() == Slot.POOLSELECTED)
-						{
-							deselect();
-						}
-						else if (s.getStatus() != Slot.POOLUSED)
-						{ 	// if another letter was already selected, deselect it
-							if (selectedSlot != null)
-							{
-								deselect();
-							}
-							// now select this one
-							selectedSlot = s;
-							s.setStatus(Slot.POOLSELECTED);
-						}
-						pentathlon.log.debug("Looking at pool slot " + slotIndex + ", status is now " + s.getStatus());
-						repaint();
-					}
-					return;
-				}
-			}
-			wordsFormed = 0;
-			// this is looking at the slots in each word on the word list
-			for (int targetWord = 0; targetWord < pentathlon.getLevel(); targetWord++)
-			{	// look at each element to see if it's a slot
-				for (int targetWordLetter = 0; targetWordLetter < words[targetWord].getElements().length; targetWordLetter++)
-				{
-					pentathlon.log.debug("looking at letters: " + targetWordLetter + ": " + words[targetWord].getElements()[targetWordLetter].getClass().getName());
-					if (words[targetWord].getElements()[targetWordLetter].getClass().getName().equals("org.ToMar.pentathlon.AA$Anchor"))
-					{
-						pentathlon.log.debug("In word " + targetWord + ", bypassing anchor letter " + targetWordLetter + " = " + words[targetWord].getElements()[targetWordLetter]);
-						continue;
-					}
-					// for each letterHolder (non-anchor) within the word
-					Slot holder = (Slot) words[targetWord].getElements()[targetWordLetter];
-					if (holder.clicked(e.getX(), e.getY()))
-					{	// you've clicked on a destination
-						Letter currentLetter = holder.getLetter();
-						if (currentLetter != null)
-						{	//there's already a letter here - return it to the pool
-							currentLetter.putBack();
-							holder.setLetter(null);
-						}
-						if (selectedSlot != null)
-						{
-							if (selectedSlot.getLetter() != null)
-							{
-								holder.setLetter(selectedSlot.getLetter());
-								selectedSlot.setStatus(Slot.POOLUSED);
-								selectedSlot = null;
-							}
-						}
-						repaint();
-						break;
-					}
-				}
-				words[targetWord].setGoodWord(false);
-				String s = words[targetWord].getValue();
-				if (s.indexOf(FILLER) == -1)
-				{
-					for (int i = 0; i < wordList.size(); i++)
-					{
-						if (wordList.get(i).equalsIgnoreCase(s))
-						{
-							wordsFormed += 1;
-							words[targetWord].setGoodWord(true);
-							break;
-//							log("word found = " + words[targetWord].getValue() + " making " + wordsFormed + " words");
-						}
-					}
-				}
-			}
-			if (wordsFormed == pentathlon.getLevel())		// beat the pentathlon.getLevel()
-			{
-				message = "You got it!";
-				for (int i = 0; i < letterPool.size(); i++)
-				{
-					letterPool.set(i, null);
-				}
-				pentathlon.seeWordList(false);
-				pentathlon.setSolved(GAMEINDEX, true);
-				repaint();
-			}
-			else
-			{
-				message = "Words: " + wordsFormed;
-			}
-		}
         if (helpButton.clicked(e.getX(), e.getY()))
         {
             pentathlon.getHelp(GAMEINDEX);
@@ -334,6 +220,137 @@ public class AA extends Canvas implements MouseListener
 			if (wordButton.clicked(e.getX(), e.getY()))
 			{
 				pentathlon.seeWordList(true);
+			}
+			else if (hintButton.clicked(e.getX(), e.getY()))
+			{
+				for (int targetWord = 0; targetWord < pentathlon.getLevel(); targetWord++)
+				{	// look at each element to see if it's a slot
+					for (int targetWordLetter = 0; targetWordLetter < words[targetWord].getElements().length; targetWordLetter++)
+					{
+						// if it's a slot, if the letter isn't the one in the original word, return it
+						if ("org.ToMar.pentathlon.AA$Slot".equalsIgnoreCase(words[targetWord].getElements()[targetWordLetter].getClass().getName()))
+						{
+							if (((Slot) words[targetWord].getElements()[targetWordLetter]).getLetter() != null)
+							{
+								if (!(((Slot) words[targetWord].getElements()[targetWordLetter]).getLetter().getLetter().equalsIgnoreCase(words[targetWord].getOriginalWord().substring(targetWordLetter, targetWordLetter + 1))))
+								{	// put the letter back
+									((Slot) words[targetWord].getElements()[targetWordLetter]).getLetter().putBack();
+									((Slot) words[targetWord].getElements()[targetWordLetter]).setLetter(null);
+								}
+							}
+						}
+					}
+				}
+			}
+		  	else
+			{
+				message = "Words: " + wordsFormed;
+				// this is looking at each slot in the letter pool
+				// if you click on a slot in the pool
+				//     if the slot is empty
+				//        if a slot has already been selected
+				//			move its letter from that slot to this slot
+				//		  otherwise, no action
+				//     if there's a letter in the slot
+				//		  if this letter was already in selected state, unselect it
+				//        else if another slot has already been selected
+				//			de-select that one, and select this one
+				for (int slotIndex = 0; slotIndex < letterPool.size(); slotIndex++)
+				{
+					Slot s = letterPool.get(slotIndex);
+					pentathlon.log.debug("Looking at pool slot " + slotIndex + ", current status is " + s.getStatus());
+					if (s.clicked(e.getX(), e.getY()))				// if slot was clicked
+					{
+						if (s.getLetter() != null)					// if there's a letter in the slot
+						{
+							pentathlon.log.debug("found");
+							// if this letter was already selected, and you click again, deselect it
+							if (s.getStatus() == Slot.POOLSELECTED)
+							{
+								deselect();
+							}
+							else if (s.getStatus() != Slot.POOLUSED)
+							{ 	// if another letter was already selected, deselect it
+								if (selectedSlot != null)
+								{
+									deselect();
+								}
+								// now select this one
+								selectedSlot = s;
+								s.setStatus(Slot.POOLSELECTED);
+							}
+							pentathlon.log.debug("Looking at pool slot " + slotIndex + ", status is now " + s.getStatus());
+							repaint();
+						}
+						return;
+					}
+				}
+				wordsFormed = 0;
+				// this is looking at the slots in each word on the word list
+				for (int targetWord = 0; targetWord < pentathlon.getLevel(); targetWord++)
+				{	// look at each element to see if it's a slot
+					for (int targetWordLetter = 0; targetWordLetter < words[targetWord].getElements().length; targetWordLetter++)
+					{
+						pentathlon.log.debug("looking at letters: " + targetWordLetter + ": " + words[targetWord].getElements()[targetWordLetter].getClass().getName());
+						if (words[targetWord].getElements()[targetWordLetter].getClass().getName().equals("org.ToMar.pentathlon.AA$Anchor"))
+						{
+							pentathlon.log.debug("In word " + targetWord + ", bypassing anchor letter " + targetWordLetter + " = " + words[targetWord].getElements()[targetWordLetter]);
+							continue;
+						}
+						// for each letterHolder (non-anchor) within the word
+						Slot holder = (Slot) words[targetWord].getElements()[targetWordLetter];
+						if (holder.clicked(e.getX(), e.getY()))
+						{	// you've clicked on a destination
+							Letter currentLetter = holder.getLetter();
+							if (currentLetter != null)
+							{	//there's already a letter here - return it to the pool
+								currentLetter.putBack();
+								holder.setLetter(null);
+							}
+							if (selectedSlot != null)
+							{
+								if (selectedSlot.getLetter() != null)
+								{
+									holder.setLetter(selectedSlot.getLetter());
+									selectedSlot.setStatus(Slot.POOLUSED);
+									selectedSlot = null;
+								}
+							}
+							repaint();
+							break;
+						}
+					}
+					words[targetWord].setGoodWord(false);
+					String s = words[targetWord].getValue();
+					if (s.indexOf(FILLER) == -1)
+					{
+						for (int i = 0; i < wordList.size(); i++)
+						{
+							if (wordList.get(i).equalsIgnoreCase(s))
+							{
+								wordsFormed += 1;
+								words[targetWord].setGoodWord(true);
+								break;
+	//							log("word found = " + words[targetWord].getValue() + " making " + wordsFormed + " words");
+							}
+						}
+					}
+				}
+				if (wordsFormed == pentathlon.getLevel())		// beat the pentathlon.getLevel()
+				{
+					message = "You got it!";
+					for (int i = 0; i < letterPool.size(); i++)
+					{
+						letterPool.set(i, null);
+					}
+					pentathlon.seeWordList(false);
+					pentathlon.setSolved(GAMEINDEX, true);
+					repaint();
+				}
+				else
+				{
+					message = "Words: " + wordsFormed;
+				}
 			}
 		}
 		repaint();
@@ -358,6 +375,7 @@ public class AA extends Canvas implements MouseListener
   		if (pentathlon.isActive()[GAMEINDEX] && !pentathlon.isSolved()[GAMEINDEX])
         {
 			wordButton.draw(this.getGraphics());
+			hintButton.draw(this.getGraphics());
 		}
         og.setColor(tmColors.BLACK);
         og.setFont(tmFonts.PLAIN24);
@@ -434,6 +452,11 @@ public class AA extends Canvas implements MouseListener
 				}
 			}
         }
+
+		public String getOriginalWord()
+		{
+			return originalWord;
+		}
         public Object[] getElements()
         {
             return elements;
@@ -530,7 +553,7 @@ public class AA extends Canvas implements MouseListener
             og.setFont(tmFonts.BOLD16);
 			if (goodWord)
 			{
-				og.setColor(tmColors.ORANGE);
+				og.setColor(tmColors.DARKORANGE);
 			}
 			else
 			{
@@ -617,7 +640,7 @@ public class AA extends Canvas implements MouseListener
             {
                 if (status == POOLSELECTED)
                 {
-                    og.setColor(tmColors.LIGHTYELLOW);
+                    og.setColor(tmColors.GOLD);
                 }
 				else if (status == POOLUSED)
                 {

@@ -13,7 +13,6 @@ public class U24 extends Canvas implements MouseListener
 {
 	private static final long serialVersionUID = -3575578768327824256L;
 	public static final String[] OPERATORS = {"+","-","*","/","(",")"};
-	public final String IDENTIFIER = "*";
 	private Puzzle[] puzzles = new Puzzle[Pentathlon.MAXLEVEL];
     private int margin = 10;
 	private int yOper = 40;
@@ -107,7 +106,7 @@ public class U24 extends Canvas implements MouseListener
 		}
         pentathlon.setPiecesToFind(GAMEINDEX, al);
         pentathlon.setActive(GAMEINDEX, false);
-        message = "Find the " + al.size() + " numbers in the Level " + pentathlon.getLevel() + " maze.";
+        message = "Find " + al.size() + " numbers.";
         repaint();
 		} catch (Exception e)
 		{
@@ -116,7 +115,7 @@ public class U24 extends Canvas implements MouseListener
     }
 	public String getSaveString()
 	{
-		return IDENTIFIER + puzzle.getSaveString();
+		return puzzle.getSaveString();
 	}
     public void foundPiece(int index)
     {

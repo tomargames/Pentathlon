@@ -29,8 +29,9 @@ public class Maze extends Canvas implements MouseListener, KeyListener
     private int entranceIdx;
     private int exitIdx;
     private int youIdx;
+	int yPad;
     private int xStart;
-    private int yMessage = 280;
+    private int yMessage = 292;
     private Maze.Direction youDoor;
     private Maze.Door westDoor;
     private Maze.Door eastDoor;
@@ -57,7 +58,7 @@ public class Maze extends Canvas implements MouseListener, KeyListener
         this.addMouseListener(this);
         this.addKeyListener(this);
         this.pentathlon = pentathlon;
-        this.scale = scale;
+        this.scale = scale;					// scale is 14
         this.size = size;
         this.maxRows = maxRows;
         this.maxCols = maxCols;
@@ -66,30 +67,31 @@ public class Maze extends Canvas implements MouseListener, KeyListener
         this.exitIdx = entranceIdx - 1;
         repaint();
         xStart = (maxCols + 6) * size;
+		yPad = 15;
         int[] xFront = {xStart, xStart + (20*scale), xStart + (20*scale), xStart};
-        int[] yFront = {5*scale, 5*scale, 17*scale, 17*scale};
+        int[] yFront = {5*scale + yPad, 5*scale + yPad, 17*scale + yPad, 17*scale + yPad};
         frontPanel = new Polygon(xFront, yFront, 4);
         int[] xBack = {xStart + 4*scale, xStart + 16*scale, xStart + 16*scale, xStart + 4*scale};
-        int[] yBack = {4*scale, 4*scale, 11*scale, 11*scale};
+        int[] yBack = {4*scale + yPad, 4*scale + yPad, 11*scale + yPad, 11*scale + yPad};
         backPanel = new Polygon(xBack, yBack, 4);
         int[] xFloor = {xStart, xStart + 4*scale, xStart + 16*scale, xStart + 20*scale};
-        int[] yFloor = {17*scale, 11*scale, 11*scale, 17*scale};
+        int[] yFloor = {17*scale + yPad, 11*scale + yPad, 11*scale + yPad, 17*scale + yPad};
         floorPanel = new Polygon(xFloor, yFloor, 4);
-        int[] yCeiling = {5*scale, 4*scale, 4*scale, 5*scale};
+        int[] yCeiling = {5*scale + yPad, 4*scale + yPad, 4*scale + yPad, 5*scale + yPad};
         ceilingPanel = new Polygon(xFloor, yCeiling, 4);
         int[] xSouth = {xStart + 8*scale, xStart + 12*scale, xStart + 12*scale, xStart + 8*scale};
-        int[] ySouth = {14*scale, 14*scale, 17*scale, 17*scale};
+        int[] ySouth = {14*scale + yPad, 14*scale + yPad, 17*scale + yPad, 17*scale + yPad};
         southDoor = new Maze.Door(xSouth, ySouth, tmColors.DARKGREEN);
         int[] xNorth = {xStart + 8*scale, xStart + 12*scale, xStart + 12*scale, xStart + 8*scale};
-        int[] yNorth = {8*scale, 8*scale, 11*scale, 11*scale};
+        int[] yNorth = {8*scale + yPad, 8*scale + yPad, 11*scale + yPad, 11*scale + yPad};
         northDoor = new Maze.Door(xNorth, yNorth, tmColors.DARKBLUE);
         // east door should be along the line from 16,12 to 20,18
         int[] xEast = {xStart + 17*scale, xStart + 19*scale, xStart + 19*scale, xStart + 17*scale};
-        int[] yEast = {10*scale, 12*scale, 15*scale + (scale/2), 12*scale + (scale/2)};
+        int[] yEast = {10*scale + yPad, 12*scale + yPad, 15*scale + yPad + (scale/2), 12*scale + yPad + (scale/2)};
         eastDoor = new Maze.Door(xEast, yEast, tmColors.LIGHTPURPLE);
         // west door should be along the line from 0,18 to 4,12
         int[] xWest = {xStart + 1*scale, xStart + 3*scale, xStart + 3*scale, xStart + 1*scale};
-        int[] yWest = {12*scale, 10*scale, 12*scale + (scale/2), 15*scale + (scale/2)};
+        int[] yWest = {12*scale + yPad, 10*scale + yPad, 12*scale + yPad + (scale/2), 15*scale + yPad + (scale/2)};
         westDoor = new Maze.Door(xWest, yWest, tmColors.ORANGE);
 		helpButton = pentathlon.getHelpButton(Pentathlon.MAZE);
         helpButton.setX(Pentathlon.widths[Pentathlon.MAZE] - 50);
@@ -233,7 +235,10 @@ public class Maze extends Canvas implements MouseListener, KeyListener
             maze[youIdx].drawCell(this.getGraphics(), north, west);
             helpButton.draw(this.getGraphics());
             historyButton.draw(this.getGraphics());
-            newGameButton.draw(this.getGraphics());
+			if (pentathlon.getLevel() > 1)
+			{
+				newGameButton.draw(this.getGraphics());
+			}
 			g.setFont(tmFonts.PLAIN10);
 			g.setColor(tmColors.BLACK);
 			g.drawString(Pentathlon.COMPILEDATE, 2, 295);
@@ -481,9 +486,19 @@ public class Maze extends Canvas implements MouseListener, KeyListener
             og.fillPolygon(floorPanel);
        		og.fillPolygon(backPanel);
             og.fillPolygon(ceilingPanel);
+			// this is the level bar, except for the outer black rectangle boundary
+			// there will be 7 possible colors: ROYGBIV -- 4 levels per color
+			Color[] spectrum = {tmColors.RED, tmColors.ORANGE, tmColors.YELLOW, tmColors.GREEN, tmColors.BLUE, tmColors.INDIGO, tmColors.VIOLET};
+			for (int i = 0; i < pentathlon.getLevel(); i++)
+			{
+				int idx = i/4;
+				og.setColor(spectrum[idx]);
+				og.fillRect(xStart + i * 11, 35, 11, 15);
+			}
             og.setColor(tmColors.BLACK);
-            og.setFont(new Font("Droid Sans", Font.PLAIN, 24));
+            og.setFont(tmFonts.PLAIN24);
             og.drawString("Level " + pentathlon.getLevel(), xStart, 25);
+			og.drawRect(xStart, 35, 28 * 11, 15);
             og.drawString(message, xStart, yMessage);
        		og.drawPolygon(frontPanel);
             og.drawPolygon(floorPanel);
@@ -511,16 +526,16 @@ public class Maze extends Canvas implements MouseListener, KeyListener
             switch (youDoor)
             {
                 case NORTH:
-               		og.fillRoundRect(xStart + 9*scale + (scale/2), 10*scale, scale, scale, 20, 20);
+               		og.fillRoundRect(xStart + 9*scale + (scale/2), 10*scale + yPad, scale, scale, 20, 20);
                     break;
                 case SOUTH:
-               		og.fillRoundRect(xStart + 9*scale + (scale/2), 16*scale, scale, scale, 20, 20);
+               		og.fillRoundRect(xStart + 9*scale + (scale/2), 16*scale + yPad, scale, scale, 20, 20);
                     break;
                 case EAST:
-               		og.fillRoundRect(xStart + 17*scale, 13*scale, scale, scale, 20, 20);
+               		og.fillRoundRect(xStart + 17*scale, 13*scale + yPad, scale, scale, 20, 20);
                     break;
                 case WEST:
-               		og.fillRoundRect(xStart + 2*scale, 13*scale, scale, scale, 20, 20);
+               		og.fillRoundRect(xStart + 2*scale, 13*scale + yPad, scale, scale, 20, 20);
                     break;
                 default:
                     pentathlon.log.error("ERROR!!! Fallthrough in Maze.drawCell");
@@ -529,10 +544,10 @@ public class Maze extends Canvas implements MouseListener, KeyListener
             {
                 Font[] jewelFonts = {null, tmFonts.PLAIN24, tmFonts.PLAIN24, tmFonts.PLAIN24, tmFonts.BOLD12};
                 og.setColor(Pentathlon.bgColors[jewelGame]);
-                og.fillRoundRect(xStart + 9*scale + (scale/2), 11*scale + (scale/2), 3*scale, 2*scale, 3, 3);
+                og.fillRoundRect(xStart + 9*scale + (scale/2), 11*scale + (scale/2) + yPad, 3*scale, 2*scale, 3, 3);
                 og.setColor(tmColors.RED);
                 og.setFont(jewelFonts[jewelGame]);
-                og.drawString("" + (pentathlon.getPiecesToFind()[jewelGame]).get(jewelIndex), xStart + 9*scale + (scale/2) + 2, 13*scale);
+                og.drawString("" + (pentathlon.getPiecesToFind()[jewelGame]).get(jewelIndex), xStart + 9*scale + (scale/2) + 5, 13*scale + yPad);
                 pentathlon.setPiecesFound(jewelGame, jewelIndex);
                 jewelGame = 0;
             }
