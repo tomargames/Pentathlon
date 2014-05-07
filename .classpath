@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="lib" path="dist/lib/Maze.jar"/>
+	<classpathentry kind="lib" path="dist/lib/Utils.jar"/>
+	<classpathentry kind="lib" path="dist/lib/WordList.jar"/>
+	<classpathentry kind="lib" path="dist/Pentathlon.jar"/>
+	<classpathentry kind="lib" path="Pentathlon/lib/Maze.jar"/>
+	<classpathentry kind="lib" path="Pentathlon/lib/Utils.jar"/>
+	<classpathentry kind="lib" path="Pentathlon/lib/WordList.jar"/>
+	<classpathentry kind="lib" path="Pentathlon/Pentathlon.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="output" path="build/classes"/>
+</classpath>

@@ -211,17 +211,16 @@ public class Maze extends Canvas implements MouseListener, KeyListener
     {
         if (pentathlon.isGameOver())
         {
-            int lev = pentathlon.getLevel() - 1;
             g.setFont(tmFonts.PLAIN24);
             g.setColor(tmColors.RED);
             g.drawString("YOU WIN!!!!!!", 10, 30);
             g.setColor(tmColors.DARKBLUE);
             g.drawString("There are no more sets to find, so there are no more levels!", 10, 60);
-            g.drawString("You completed level " + lev + "!", 10, 90);
+            g.drawString("You reached level " + pentathlon.getLevel() + "!", 10, 90);
             g.setColor(tmColors.DARKGREEN);
             g.drawString("Please email me at tomargames@gmail.com.", 10, 120);
             g.drawString("Include your name and what level you reached.", 10, 150);
-            g.drawString("Then look for your name at in the Maze Help window!", 10, 180);
+            g.drawString("Then look for your name in the Maze Help window!", 10, 180);
             newGameButton.draw(this.getGraphics());
         }
         else
@@ -374,6 +373,10 @@ public class Maze extends Canvas implements MouseListener, KeyListener
             {
                 if (!pentathlon.isSolved()[gameIndex])
                 {
+					if (Pentathlon.TEST && (gameIndex == Pentathlon.AA || gameIndex == Pentathlon.HEX))
+					{
+						continue;
+					}
                     message = "Solve " + Pentathlon.titles[gameIndex];
                     allFound = false;
                     break;

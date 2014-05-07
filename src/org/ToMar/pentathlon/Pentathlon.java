@@ -26,7 +26,8 @@ import org.ToMar.Utils.tmLog;
 public class Pentathlon implements Runnable
 {
     private Thread thread;
-	public static final String COMPILEDATE = "04/15/14";
+	public static final String COMPILEDATE = "04/26/14";
+	public static final boolean TEST = false;
     public static final int NUMBEROFGAMES = 5;          //change to 5
     public static final int MAXLEVEL = 27;
     public static final int MAZE = 0;
@@ -315,7 +316,7 @@ public class Pentathlon implements Runnable
 			if (gameName.equalsIgnoreCase(gameLines.get(i).substring(0, 14)))
 			{
 				log.debug("Found the line: " + gameLines.get(i));
-				String s = gameLines.get(i).substring(0,24) + "Y";
+				String s = gameLines.get(i).substring(0,14) + this.getLevel() + Functions.getDateTimeStamp().substring(0,8) + "Y";
 				gameLines.set(i, s);
 				log.debug("After fixing: " + gameLines.get(i));
 				Functions.arrayListToTextFile(historyFile, gameLines);
